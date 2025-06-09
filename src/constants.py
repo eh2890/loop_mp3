@@ -1,0 +1,3 @@
+BASE_MP3_FILENAME = "base.mp3"
+LOOPED_MP3_FILENAME = "looped.mp3"
+MP3_FILE_EXTENSION = ".mp3"
