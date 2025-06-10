@@ -195,3 +195,6 @@ cython_debug/
 
 # MP3
 *.mp3
+
+# .DS_Store
+.DS_Store
