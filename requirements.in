@@ -14,11 +14,13 @@ lazy_loader
 librosa
 llvmlite
 msgpack
+mypy
 numba
 packaging
 pip-tools
 platformdirs
 pooch
+pre-commit
 PyAudio
 pycparser
 pydub

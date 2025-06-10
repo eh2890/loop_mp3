@@ -1,5 +1,4 @@
 import yt_dlp
-import pathlib
 import logging
 from constants import MP3_FILE_EXTENSION
 
@@ -7,7 +6,7 @@ from constants import MP3_FILE_EXTENSION
 log = logging.getLogger(__name__)
 
 
-def download_youtube(url: str, filename: str) -> pathlib.Path:
+def download_youtube(url: str, filename: str) -> None:
     """
     Downloads YouTube URL as .mp3 file
     Returns path to downloaded file
