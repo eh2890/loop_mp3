@@ -6,6 +6,7 @@ on:
 
 jobs:
   lint-and-type-check:
+    name: Lint and Type Check
     runs-on: ubuntu-latest
 
     steps:
