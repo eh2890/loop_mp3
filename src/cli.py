@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="game_music_mp3",
+        prog="loop_mp3",
         description="CLI for downloading and looping .mp3 files",
     )
     # input group
