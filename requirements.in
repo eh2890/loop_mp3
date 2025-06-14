@@ -21,10 +21,9 @@ packaging
 pip-tools
 platformdirs
 pooch
-PyAudio
 pycparser
-pydub
 pyproject_hooks
+pytest
 requests
 ruff
 scikit-learn

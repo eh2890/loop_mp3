@@ -19,3 +19,6 @@ loop-mp3 = "cli:main"
 python_version = "3.13"
 strict = true
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
