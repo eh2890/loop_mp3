@@ -1,9 +1,9 @@
 import yt_dlp
 import logging
-from constants import MP3_FILE_EXTENSION
+from filename_constants import MP3_FILE_EXTENSION
 
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def download_youtube(url: str, filename: str) -> None:
@@ -19,7 +19,7 @@ def download_youtube(url: str, filename: str) -> None:
         "format": "bestaudio/best",
         "outtmpl": filename,
         "audio_format": "mp3",
-        "logger": log,
+        "logger": logger,
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
