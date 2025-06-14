@@ -1,6 +1,6 @@
-# Game Music MP3
+# Loop MP3
 
-A Python script to turn `.mp3` files of game/repetitive music into longer `.mp3` files.
+A Python script to loop `.mp3` files.
 
 ## Setup
 
