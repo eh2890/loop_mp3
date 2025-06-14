@@ -1,3 +1,19 @@
+[build-system]
+requires = ["setuptools"]
+build-baackend = "setuptools.build_meta"
+
+[project]
+name = "loop_mp3"
+version = "0.1.0"
+authors = [
+    {name = "Eumin Hong"},
+]
+description = "A CLI tool for looping .mp3 files"
+readme = "README.md"
+
+[project.scripts]
+loop-mp3 = "cli:main"
+
 [tool.mypy]
 python_version = "3.13"
 strict = true
