@@ -5,73 +5,185 @@ import logging
 import pathlib
 import ffmpeg
 
-from constants import LOOPED_MP3_FILENAME
+from filename_constants import LOOPED_MP3_FILENAME
 
 
-log = logging.getLogger(__name__)
+_LOOP_SEGMENT_MIN_LENGTH_MS = 100
+
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+
+class AudioLoopError(Exception):
+    pass
 
 
 def loop_audio(
     mp3_filepath: pathlib.Path,
     output_filepath: pathlib.Path,
-    *,
-    length: int | None = None,
-    repetitions: int | None = None,
-    beat_offset: int = 0,
+    sampling_rate: int | None,
+    maximum_length: int | None,
+    start: int | None,
+    end: int | None,
+    start_beat_offset: int,
+    end_beat_offset: int,
+    beat_shift: int,
 ) -> None:
-    if length and repetitions:
-        raise RuntimeError(
-            f"Cannot pass non-None values for both arguments {length=} and {repetitions=}"
-        )
+    loop_segment = _get_loop_segment(
+        mp3_filepath,
+        sampling_rate,
+        start,
+        end,
+        start_beat_offset,
+        end_beat_offset,
+        beat_shift,
+    )
 
-    if not length and not repetitions:
-        raise RuntimeError(
-            "Must provide value for one of length and repetitions arguments"
-        )
+    duration_s = loop_segment.duration_seconds
 
-    start_ms, end_ms = _get_start_end_ms(mp3_filepath, beat_offset)
+    # compute number of repetitions from maximum_length
+    repetitions = (
+        1 if maximum_length is None else math.floor(maximum_length / duration_s)
+    )
 
-    # compute number of repetitions from length
-    if length:
-        repetitions = math.floor(length * 1000 / (end_ms - start_ms))
+    if len(loop_segment) < _LOOP_SEGMENT_MIN_LENGTH_MS:
+        raise AudioLoopError(f"Loop segment is only {len(loop_segment)} ms long")
 
-    # Load audio with pydub
-    log.info(f"Loading {mp3_filepath}")
-    base = AudioSegment.from_mp3(mp3_filepath)
+    logger.info(f"Looping {repetitions=} times")
+    looped_mp3 = loop_segment * repetitions
 
-    loop_segment = base[start_ms:end_ms]
-
-    log.info(f"Looping {repetitions=} times")
-    looped = loop_segment * repetitions
-
-    looped.export(LOOPED_MP3_FILENAME, format="mp3")
+    looped_mp3.export(LOOPED_MP3_FILENAME, format="mp3")
 
     _remove_xing_header(LOOPED_MP3_FILENAME, output_filepath)
-    log.info(f"Looped {mp3_filepath}; wrote reuslt to {output_filepath}")
+    logger.info(f"Looped {mp3_filepath}; wrote result to {output_filepath}")
 
 
-def _get_start_end_ms(
-    mp3_filepath: pathlib.Path, beat_offset: int = 0
-) -> tuple[int, int]:
-    y, sr = librosa.load(mp3_filepath, sr=None)
+def _get_loop_segment(
+    mp3_filepath: pathlib.Path,
+    sampling_rate: int | None,
+    start: int | None,
+    end: int | None,
+    start_beat_offset: int,
+    end_beat_offset: int,
+    beat_shift: int,
+) -> AudioSegment:
+    y, sr = librosa.load(mp3_filepath, sr=sampling_rate)
     tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
     beat_times = librosa.frames_to_time(beat_frames, sr=sr)
 
     if len(beat_times) < 2:
-        raise RuntimeError("Fewer than two beats detected")
+        raise AudioLoopError("Fewer than two beats detected")
 
-    beat_length_ms = 60 / tempo
-    start_time = float(beat_times[0])
-    end_time = float(beat_times[-1]) + beat_length_ms + (beat_offset * beat_length_ms)
+    duration_s = librosa.get_duration(y=y, sr=sr)
+    start_time = start if start else 0
+    end_time = end if end else duration_s
 
-    # convert to milliseconds
-    # this is for pydub and indexing
-    start_ms = int(start_time * 1000)
-    end_ms = int(end_time * 1000)
+    beat_length_s = 60 / tempo
 
-    log.info(f"Detected start and end ms for {mp3_filepath}: {start_ms=}; {end_ms=}")
+    # NOTE: the comparisons do not use a threshold (like for other float comparisons
+    # The user has the option to use beat offsets
 
-    return start_ms, end_ms
+    start_beat_index = None  # the beat index for the start beat
+    end_beat_index = (
+        None  # the beat index for the last beat; the entire end beat will be used
+    )
+
+    # find the beat right at or after the start
+    for i, beat_time in enumerate(beat_times):
+        if float(beat_time) >= start_time:
+            start_beat_index = i
+            break
+
+    # find the beat right at or before the end
+    for j, beat_time in enumerate(reversed(beat_times)):
+        if float(beat_time) <= end_time:
+            end_beat_index = len(beat_times) - j - 1
+            break
+
+    if start_beat_index is None:
+        raise AudioLoopError(f"Could not find beat at or after {start_time=}")
+    if end_beat_index is None:
+        raise AudioLoopError(f"Could not find beat at or before {end_time=}")
+
+    start_beat_index += start_beat_offset
+    end_beat_index += end_beat_offset
+
+    if end_beat_index < start_beat_index:
+        # NOTE: it is acceptable for these to be the same beat as the entire end beat will be used
+        raise AudioLoopError("Start beat is after end beat")
+
+    if start_beat_index < 0:
+        logger.warning(
+            "Start beat is before first beat of original audio, defaulting to first beat"
+        )
+        start_beat_index = 0
+
+    if len(beat_times) <= start_beat_index:
+        raise AudioLoopError("Start beat is after last beat of original audio")
+
+    if end_beat_index < 0:
+        raise AudioLoopError("End beat is before first beat of original audio")
+
+    if len(beat_times) <= end_beat_index:
+        logger.warning(
+            "End beat is after last beat of original audio, defaulting to last beat"
+        )
+        end_beat_index = len(beat_times) - 1
+
+    logger.info(
+        f"Start beat info: {start_beat_index=}, {beat_times[start_beat_index]=}"
+    )
+    logger.info(f"End beat info: {end_beat_index=}, {beat_times[end_beat_index]=}")
+
+    logger.info(f"Loading {mp3_filepath=}")
+    base_audio_segment = AudioSegment.from_mp3(mp3_filepath)
+
+    if beat_shift:
+        logger.info(f"Applying {beat_shift=}")
+        # this splits the audio into [start + beat_shift, end) and [end, end + beat_shift]
+        # we need to reorder into [end, end + beat_shift) and [start + beat_shift, end)
+        start_and_shift_s = float(beat_times[start_beat_index]) + beat_shift
+        end_s = float(beat_times[end_beat_index]) + beat_length_s
+        end_and_shift_s = (
+            float(beat_times[end_beat_index]) + beat_length_s + beat_shift
+        )  # add extra beat to include entire beat
+
+        if start_and_shift_s < 0:
+            raise AudioLoopError(
+                f"Out of bounds beat shift: {start_and_shift_s=} is before start of audio"
+            )
+        if end_s >= duration_s:
+            raise AudioLoopError(
+                f"Out of bounds beat shift: {end_and_shift_s=} exceeds length of audio {duration_s=}"
+            )
+
+        # convert to milliseconds for pydub and indexing
+        start_and_shift_ms = int(start_and_shift_s * 1000)
+        end_ms = int(end_s * 1000)
+        end_and_shift_ms = int(end_and_shift_s * 1000)
+        logger.info(
+            f"Stitching together two segments, in ms: [{end_ms}, {end_and_shift_ms}) and [{start_and_shift_ms}, {end_ms})"
+        )
+        loop_segment = (
+            base_audio_segment[end_ms:end_and_shift_ms]
+            + base_audio_segment[start_and_shift_ms:end_ms]
+        )
+    else:
+        logger.info("No beat shift applied")
+        start_s = float(beat_times[start_beat_index])
+        end_s = (
+            float(beat_times[end_beat_index]) + beat_length_s
+        )  # add extra beat to include entire beat
+
+        # convert to milliseconds for pydub and indexing
+        start_ms = int(start_s * 1000)
+        end_ms = int(end_s * 1000)
+        logger.info(
+            f"Detected start and end ms for {mp3_filepath}: {start_ms=}; {end_ms=}"
+        )
+        loop_segment = base_audio_segment[start_ms:end_ms]
+    return loop_segment
 
 
 def _remove_xing_header(
@@ -84,6 +196,6 @@ def _remove_xing_header(
     ffmpeg.input(LOOPED_MP3_FILENAME).output(
         str(output_filepath), c="copy", write_xing=0
     ).global_args("-loglevel", "error").run()
-    log.info(
+    logger.info(
         f"Removed Xing header from {mp3_filepath}; wrote result to {output_filepath}"
     )
