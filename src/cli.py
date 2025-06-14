@@ -63,7 +63,7 @@ def main() -> None:
     input_splicing_group.add_argument(
         "--beat-shift",
         type=int,
-        help="Beat shift",
+        help="Beat shift, must be non-negative",
         default=0,
     )
     input_splicing_group.add_argument(
@@ -89,6 +89,10 @@ def main() -> None:
 
     args = parser.parse_args()
     output_filepath = pathlib.Path(args.output_filepath).resolve()
+    if args.beat_shift < 0:
+        raise argparse.ArgumentTypeError(
+            f"Beat shift {args.beat_shift=} is an invalid negative value"
+        )
 
     with tempfile.TemporaryDirectory() as temp_dir:
         base_mp3_filepath = pathlib.Path(temp_dir, BASE_MP3_FILENAME)
