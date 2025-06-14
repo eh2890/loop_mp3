@@ -10,6 +10,7 @@ authors = [
 ]
 description = "A CLI tool for looping .mp3 files"
 readme = "README.md"
+requires-python = ">=3.13"
 
 [project.scripts]
 loop-mp3 = "cli:main"
