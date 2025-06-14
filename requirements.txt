@@ -47,6 +47,8 @@ idna==3.10
     # via
     #   -r requirements.in
     #   requests
+iniconfig==2.1.0
+    # via pytest
 joblib==1.5.1
     # via
     #   -r requirements.in
@@ -62,7 +64,7 @@ llvmlite==0.44.0
     # via
     #   -r requirements.in
     #   numba
-msgpack==1.1.0
+msgpack==1.1.1
     # via
     #   -r requirements.in
     #   librosa
@@ -89,6 +91,7 @@ packaging==25.0
     #   build
     #   lazy-loader
     #   pooch
+    #   pytest
 pathspec==0.12.1
     # via mypy
 pip-tools==7.4.1
@@ -97,23 +100,25 @@ platformdirs==4.3.8
     # via
     #   -r requirements.in
     #   pooch
+pluggy==1.6.0
+    # via pytest
 pooch==1.8.2
     # via
     #   -r requirements.in
     #   librosa
-pyaudio==0.2.14
-    # via -r requirements.in
 pycparser==2.22
     # via
     #   -r requirements.in
     #   cffi
-pydub==0.25.1
-    # via -r requirements.in
+pygments==2.19.1
+    # via pytest
 pyproject-hooks==1.2.0
     # via
     #   -r requirements.in
     #   build
     #   pip-tools
+pytest==8.4.0
+    # via -r requirements.in
 requests==2.32.4
     # via
     #   -r requirements.in

@@ -70,6 +70,7 @@ def main() -> None:
         "--sampling-rate",
         type=int,
         help="Sampling rate; defaults to librosa's default of 22050hz",
+        default=22050,
     )
     # output length group
     output_group = parser.add_argument_group("Output", "Parameters for output file")
