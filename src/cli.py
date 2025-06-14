@@ -72,17 +72,16 @@ def main() -> None:
         help="Sampling rate; defaults to librosa's default of 22050hz",
     )
     # output length group
-    output_length_group = parser.add_argument_group(
-        "Output ", "Parameters for output file"
+    output_group = parser.add_argument_group(
+        "Output", "Parameters for output file"
     )
-    output_length_group.add_argument(
+    output_group.add_argument(
         "--maximum-length",
         "-m",
         type=TimestampToSecondsConverter.convert_timestamp_to_seconds,
         help=f"Maximum length of output as a timestamp; formats: {TimestampToSecondsConverter.SUPPORTED_TIMESTAMP_FORMATS}",
     )
-    # output name
-    output_length_group.add_argument(
+    output_group.add_argument(
         "--output-filepath",
         "-o",
         type=str,
@@ -97,16 +96,16 @@ def main() -> None:
         base_mp3_filepath = pathlib.Path(temp_dir, BASE_MP3_FILENAME)
         if args.input_filepath:
             # copy input .mp3 file to temp dir
-            logger.info(f"Using {args.input_filepath} as input filepath")
+            logger.debug(f"Using {args.input_filepath} as input filepath")
             shutil.copy(args.input_filepath, base_mp3_filepath)
         else:
             # download youtube .mp3 file
-            logger.info(f"Downloading {args.youtube}")
+            logger.debug(f"Downloading {args.youtube}")
             with PushDir(temp_dir):
                 download_youtube(args.youtube, BASE_MP3_FILENAME)
 
         # temp_dir now holds the BASE_MP3_FILENAME
-        logger.info(f"temp_dir contents: {os.listdir(temp_dir)}")
+        logger.debug(f"temp_dir contents: {os.listdir(temp_dir)}")
 
         # loop audio
         with PushDir(temp_dir):
