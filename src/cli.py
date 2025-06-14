@@ -72,9 +72,7 @@ def main() -> None:
         help="Sampling rate; defaults to librosa's default of 22050hz",
     )
     # output length group
-    output_group = parser.add_argument_group(
-        "Output", "Parameters for output file"
-    )
+    output_group = parser.add_argument_group("Output", "Parameters for output file")
     output_group.add_argument(
         "--maximum-length",
         "-m",
