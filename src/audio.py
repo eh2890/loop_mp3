@@ -50,13 +50,13 @@ def loop_audio(
     if len(loop_segment) < _LOOP_SEGMENT_MIN_LENGTH_MS:
         raise AudioLoopError(f"Loop segment is only {len(loop_segment)} ms long")
 
-    logger.info(f"Looping {repetitions=} times")
+    logger.debug(f"Looping {repetitions=} times")
     looped_mp3 = loop_segment * repetitions
 
     looped_mp3.export(LOOPED_MP3_FILENAME, format="mp3")
 
     _remove_xing_header(LOOPED_MP3_FILENAME, output_filepath)
-    logger.info(f"Looped {mp3_filepath}; wrote result to {output_filepath}")
+    logger.debug(f"Looped {mp3_filepath}; wrote result to {output_filepath}")
 
 
 def _get_loop_segment(
@@ -131,16 +131,16 @@ def _get_loop_segment(
         )
         end_beat_index = len(beat_times) - 1
 
-    logger.info(
+    logger.debug(
         f"Start beat info: {start_beat_index=}, {beat_times[start_beat_index]=}"
     )
-    logger.info(f"End beat info: {end_beat_index=}, {beat_times[end_beat_index]=}")
+    logger.debug(f"End beat info: {end_beat_index=}, {beat_times[end_beat_index]=}")
 
-    logger.info(f"Loading {mp3_filepath=}")
+    logger.debug(f"Loading {mp3_filepath=}")
     base_audio_segment = AudioSegment.from_mp3(mp3_filepath)
 
     if beat_shift:
-        logger.info(f"Applying {beat_shift=}")
+        logger.debug(f"Applying {beat_shift=}")
         # this splits the audio into [start + beat_shift, end) and [end, end + beat_shift]
         # we need to reorder into [end, end + beat_shift) and [start + beat_shift, end)
         start_and_shift_s = float(beat_times[start_beat_index]) + beat_shift
@@ -162,7 +162,7 @@ def _get_loop_segment(
         start_and_shift_ms = int(start_and_shift_s * 1000)
         end_ms = int(end_s * 1000)
         end_and_shift_ms = int(end_and_shift_s * 1000)
-        logger.info(
+        logger.debug(
             f"Stitching together two segments, in ms: [{end_ms}, {end_and_shift_ms}) and [{start_and_shift_ms}, {end_ms})"
         )
         loop_segment = (
@@ -170,7 +170,7 @@ def _get_loop_segment(
             + base_audio_segment[start_and_shift_ms:end_ms]
         )
     else:
-        logger.info("No beat shift applied")
+        logger.debug("No beat shift applied")
         start_s = float(beat_times[start_beat_index])
         end_s = (
             float(beat_times[end_beat_index]) + beat_length_s
@@ -179,7 +179,7 @@ def _get_loop_segment(
         # convert to milliseconds for pydub and indexing
         start_ms = int(start_s * 1000)
         end_ms = int(end_s * 1000)
-        logger.info(
+        logger.debug(
             f"Detected start and end ms for {mp3_filepath}: {start_ms=}; {end_ms=}"
         )
         loop_segment = base_audio_segment[start_ms:end_ms]
@@ -196,6 +196,6 @@ def _remove_xing_header(
     ffmpeg.input(LOOPED_MP3_FILENAME).output(
         str(output_filepath), c="copy", write_xing=0
     ).global_args("-loglevel", "error").run()
-    logger.info(
+    logger.debug(
         f"Removed Xing header from {mp3_filepath}; wrote result to {output_filepath}"
     )
