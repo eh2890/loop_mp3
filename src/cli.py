@@ -66,6 +66,11 @@ def main() -> None:
         help="Beat shift",
         default=0,
     )
+    input_splicing_group.add_argument(
+        "--sampling-rate",
+        type=int,
+        help="Sampling rate; defaults to librosa's default of 22050hz",
+    )
     # output length group
     output_length_group = parser.add_argument_group(
         "Output ", "Parameters for output file"
@@ -108,7 +113,7 @@ def main() -> None:
             loop_audio(
                 mp3_filepath=BASE_MP3_FILENAME,
                 output_filepath=output_filepath,
-                sampling_rate=None,  # TODO
+                sampling_rate=args.sampling_rate,
                 maximum_length=args.maximum_length,
                 start=args.start,
                 end=args.end,
