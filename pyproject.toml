@@ -4,7 +4,7 @@ build-baackend = "setuptools.build_meta"
 
 [project]
 name = "loop_mp3"
-version = "0.1.0"
+version = "1.0.0"
 authors = [
     {name = "Eumin Hong"},
 ]
