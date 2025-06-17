@@ -27,38 +27,49 @@ class AudioLoopError(Exception):
 def loop_audio(
     mp3_filepath: pathlib.Path,
     output_filepath: pathlib.Path,
-    sampling_rate: int,
-    maximum_length: int | None,
-    start: int | None,
-    end: int | None,
-    start_beat_offset: int,
-    end_beat_offset: int,
-    beat_shift: int,
+    sampling_rate_hz: int,
+    length_s: int | None,
+    start_s: int | None,
+    end_s: int | None,
+    start_offset_beats: int,
+    end_offset_beats: int,
+    input_shift_beats: int,
+    end_truncate_ms: int,
+    output_fade_ms: int,
 ) -> None:
     loop_segment = _get_loop_segment(
         mp3_filepath,
-        sampling_rate,
-        start,
-        end,
-        start_beat_offset,
-        end_beat_offset,
-        beat_shift,
+        sampling_rate_hz,
+        start_s,
+        end_s,
+        start_offset_beats,
+        end_offset_beats,
+        input_shift_beats,
     )
 
-    duration_s = librosa.get_duration(y=loop_segment, sr=sampling_rate)
+    duration_s = librosa.get_duration(y=loop_segment, sr=sampling_rate_hz)
 
-    # compute number of repetitions from maximum_length
-    repetitions = (
-        1 if maximum_length is None else math.floor(maximum_length / duration_s)
-    )
+    # compute number of repetitions from length
+    repetitions = 1 if length_s is None else math.floor(length_s / duration_s)
 
     if duration_s < _LOOP_SEGMENT_MIN_LENGTH_S:
         raise AudioLoopError(f"Loop segment is only {duration_s=}s long")
 
+    end_truncate_s = end_truncate_ms / 1000
+    if end_truncate_s >= duration_s:
+        raise AudioLoopError(
+            "End truncation length {end_truncate_s} exceeds loop segment length {duration_s=}"
+        )
+
     logger.debug(f"Looping {repetitions=} times")
     looped_mp3 = np.tile(loop_segment, repetitions)
+    looped_mp3 = looped_mp3[: -_second_to_index(end_truncate_s, sampling_rate_hz)]
+    if output_fade_ms:
+        fade_samples = _second_to_index(output_fade_ms / 1000, sampling_rate_hz)
+        fade_curve = np.linspace(1, 0, fade_samples)
+        looped_mp3[-fade_samples:] *= fade_curve
 
-    sf.write(TEMPORARY_WAV_FILENAME, looped_mp3, sampling_rate)
+    sf.write(TEMPORARY_WAV_FILENAME, looped_mp3, sampling_rate_hz)
     ffmpeg.input(TEMPORARY_WAV_FILENAME).output(LOOPED_MP3_FILENAME).run(quiet=True)
 
     _remove_xing_header(LOOPED_MP3_FILENAME, output_filepath)
@@ -67,15 +78,15 @@ def loop_audio(
 
 def _get_loop_segment(
     mp3_filepath: pathlib.Path,
-    sampling_rate: int,
+    sampling_rate_hz: int,
     start: int | None,
     end: int | None,
-    start_beat_offset: int,
-    end_beat_offset: int,
-    beat_shift: int,
+    start_offset_beats: int,
+    end_offset_beats: int,
+    input_shift_beats: int,
 ) -> NDArray[np.float32]:
     loop_segment: NDArray[np.float32]
-    base_nd_array, sr = librosa.load(mp3_filepath, sr=sampling_rate)
+    base_nd_array, sr = librosa.load(mp3_filepath, sr=sampling_rate_hz)
     tempo, beat_frames = librosa.beat.beat_track(y=base_nd_array, sr=sr)
     beat_times = librosa.frames_to_time(beat_frames, sr=sr)
 
@@ -113,8 +124,8 @@ def _get_loop_segment(
     if end_beat_index is None:
         raise AudioLoopError(f"Could not find beat at or before {end_time=}")
 
-    start_beat_index += start_beat_offset
-    end_beat_index += end_beat_offset
+    start_beat_index += start_offset_beats
+    end_beat_index += end_offset_beats
 
     if end_beat_index < start_beat_index:
         # NOTE: it is acceptable for these to be the same beat as the entire end beat will be used
@@ -145,16 +156,18 @@ def _get_loop_segment(
 
     logger.debug(f"Loading {mp3_filepath=}")
 
-    if beat_shift:
-        logger.debug(f"Applying {beat_shift=}")
-        # this splits the audio into [start + beat_shift, end) and [end, end + beat_shift]
-        # we need to reorder into [end, end + beat_shift) and [start + beat_shift, end)
+    if input_shift_beats:
+        logger.debug(f"Applying {input_shift_beats=}")
+        # this splits the audio into [start + input_shift_beats, end) and [end, end + input_shift_beats]
+        # we need to reorder into [end, end + input_shift_beats) and [start + input_shift_beats, end)
         start_and_shift_s = float(
-            beat_times[start_beat_index] + beat_shift * beat_length_s
+            beat_times[start_beat_index] + input_shift_beats * beat_length_s
         )
         end_s = float(beat_times[end_beat_index] + beat_length_s)
         end_and_shift_s = float(
-            beat_times[end_beat_index] + beat_length_s + beat_shift * beat_length_s
+            beat_times[end_beat_index]
+            + beat_length_s
+            + input_shift_beats * beat_length_s
         )  # add extra beat to include entire beat
 
         if start_and_shift_s < 0:
@@ -172,14 +185,14 @@ def _get_loop_segment(
         loop_segment = np.concatenate(
             [
                 base_nd_array[
-                    _second_to_index(end_s, sampling_rate) : _second_to_index(
-                        end_and_shift_s, sampling_rate
+                    _second_to_index(end_s, sampling_rate_hz) : _second_to_index(
+                        end_and_shift_s, sampling_rate_hz
                     )
                 ],
                 base_nd_array[
                     _second_to_index(
-                        start_and_shift_s, sampling_rate
-                    ) : _second_to_index(end_s, sampling_rate)
+                        start_and_shift_s, sampling_rate_hz
+                    ) : _second_to_index(end_s, sampling_rate_hz)
                 ],
             ]
         )
@@ -194,15 +207,15 @@ def _get_loop_segment(
             f"Detected start and end s for {mp3_filepath}: {start_s=}; {end_s=}"
         )
         loop_segment = base_nd_array[
-            _second_to_index(start_s, sampling_rate) : _second_to_index(
-                end_s, sampling_rate
+            _second_to_index(start_s, sampling_rate_hz) : _second_to_index(
+                end_s, sampling_rate_hz
             )
         ]
     return loop_segment.astype(np.float32)
 
 
-def _second_to_index(second: float, sampling_rate: int) -> int:
-    return int(sampling_rate * second)
+def _second_to_index(second: float, sampling_rate_hz: int) -> int:
+    return int(sampling_rate_hz * second)
 
 
 def _remove_xing_header(

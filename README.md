@@ -8,6 +8,7 @@ For the root directory of the repository, run:
 ```
 $ python3 -m venv venv
 $ source venv/bin/activate
+$ pip install -r requirements.txt
 $ pip install -e .
 ```
 
@@ -33,15 +34,15 @@ The source input `.mp3` file can be spliced/altered in several ways:
     - See the (Timestamp Format)[#timestamp-format] section for the format for these inputs
     - The start beat is the first beat at or after the start time
     - The end beat if the last beat at or before the end time
-- For finer control, the `--start-beat-offset` and `--end-beat-offset` arguments can be used to adjust the start and end beats respectively
-- The `--beat-shift` argument is the number of beats to shift the start and end of the looping section
+- For finer control, the `--start-offset` and `--end-offset` arguments can be used to adjust the start and end beats respectively
+- The `--input-shift` argument is the number of beats to shift the start and end of the looping section
     - See the (Beat Shift)[#beat-shift] section for details
 - The `--sampling-rate` argument is to determine the sampling rate used to load the `.mp3` file
 
 ### Output
 
 The output `.mp3` file can be adjusted:
-- The `--maximum-length` argument indicates the maximum length of the output `.mp3` file as a timestamp
+- The `--length` argument indicates the maximum length of the output `.mp3` file as a timestamp
     - See the (Timestamp Format)[#timestamp-format] section for the format for these inputs
     - If this optional argument is not provided, only the looped segment will be downloaded (e.g. one repetition)
 - The `--output-filepath` arguments allows the user to specify the filepath of the output file.

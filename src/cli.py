@@ -49,19 +49,19 @@ def main() -> None:
         help=f"End timestamp; formats: {TimestampToSecondsConverter.SUPPORTED_TIMESTAMP_FORMATS}",
     )
     input_splicing_group.add_argument(
-        "--start-beat-offset",
+        "--start-offset",
         type=int,
         help="Offset, in beats, from the start time",
         default=0,
     )
     input_splicing_group.add_argument(
-        "--end-beat-offset",
+        "--end-offset",
         type=int,
         help="Offset, in beats, from the end time",
         default=0,
     )
     input_splicing_group.add_argument(
-        "--beat-shift",
+        "--input-shift",
         type=int,
         help="Beat shift, must be non-negative",
         default=0,
@@ -75,8 +75,8 @@ def main() -> None:
     # output length group
     output_group = parser.add_argument_group("Output", "Parameters for output file")
     output_group.add_argument(
-        "--maximum-length",
-        "-m",
+        "--length",
+        "-l",
         type=TimestampToSecondsConverter.convert_timestamp_to_seconds,
         help=f"Maximum length of output as a timestamp; formats: {TimestampToSecondsConverter.SUPPORTED_TIMESTAMP_FORMATS}",
     )
@@ -87,12 +87,32 @@ def main() -> None:
         help=f"Name of output file; defaults to {DEFAULT_OUTPUT_MP3_FILENAME}",
         default=DEFAULT_OUTPUT_MP3_FILENAME,
     )
+    output_group.add_argument(
+        "--end-truncate",
+        type=int,
+        help="Length to truncate the end of the output file, in milliseconds",
+        default=0,
+    )
+    output_group.add_argument(
+        "--output-fade",
+        type=int,
+        help="Length of output fade, in milliseconds; applied after truncation",
+        default=0,
+    )
 
     args = parser.parse_args()
     output_filepath = pathlib.Path(args.output_filepath).resolve()
-    if args.beat_shift < 0:
+    if args.input_shift < 0:
         raise argparse.ArgumentTypeError(
-            f"Beat shift {args.beat_shift=} is an invalid negative value"
+            f"Input shift {args.input_shift=} is an invalid negative value"
+        )
+    if args.end_truncate < 0:
+        raise argparse.ArgumentTypeError(
+            f"End truncation length {args.end_truncate=} is an invalid negative value"
+        )
+    if args.output_fade < 0:
+        raise argparse.ArgumentTypeError(
+            f"Output fade {args.output_fade=} is an invalid negative value"
         )
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -115,13 +135,15 @@ def main() -> None:
             loop_audio(
                 mp3_filepath=BASE_MP3_FILENAME,
                 output_filepath=output_filepath,
-                sampling_rate=args.sampling_rate,
-                maximum_length=args.maximum_length,
-                start=args.start,
-                end=args.end,
-                start_beat_offset=args.start_beat_offset,
-                end_beat_offset=args.end_beat_offset,
-                beat_shift=args.beat_shift,
+                sampling_rate_hz=args.sampling_rate,
+                length_s=args.length,
+                start_s=args.start,
+                end_s=args.end,
+                start_offset_beats=args.start_offset,
+                end_offset_beats=args.end_offset,
+                input_shift_beats=args.input_shift,
+                end_truncate_ms=args.end_truncate,
+                output_fade_ms=args.output_fade,
             )
 
 
