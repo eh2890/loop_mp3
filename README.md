@@ -45,7 +45,9 @@ The output `.mp3` file can be adjusted:
 - The `--length` argument indicates the maximum length of the output `.mp3` file as a timestamp
     - See the (Timestamp Format)[#timestamp-format] section for the format for these inputs
     - If this optional argument is not provided, only the looped segment will be downloaded (e.g. one repetition)
-- The `--output-filepath` arguments allows the user to specify the filepath of the output file.
+- The `--output-filepath` arguments allows the user to specify the filepath of the output file
+- The `--end-truncate` argument truncates the end of the output file
+- The `--output-fade` argument fades the end of the output (after truncation)
 
 ## Reference
 
