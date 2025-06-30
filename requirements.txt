@@ -117,7 +117,7 @@ pyproject-hooks==1.2.0
     #   -r requirements.in
     #   build
     #   pip-tools
-pytest==8.4.0
+pytest==8.4.1
     # via -r requirements.in
 requests==2.32.4
     # via
