@@ -1,3 +1,4 @@
+import shutil
 import librosa
 import math
 import logging
@@ -72,7 +73,10 @@ def loop_audio(
     sf.write(TEMPORARY_WAV_FILENAME, looped_mp3, sampling_rate_hz)
     ffmpeg.input(TEMPORARY_WAV_FILENAME).output(LOOPED_MP3_FILENAME).run(quiet=True)
 
-    _remove_xing_header(LOOPED_MP3_FILENAME, output_filepath)
+    if repetitions != 1:
+        _remove_xing_header(LOOPED_MP3_FILENAME, output_filepath)
+    else:
+        shutil.copy(LOOPED_MP3_FILENAME, output_filepath)
     logger.debug(f"Looped {mp3_filepath}; wrote result to {output_filepath}")
 
 
