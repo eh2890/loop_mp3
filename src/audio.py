@@ -35,7 +35,7 @@ def loop_audio(
     start_offset_beats: int,
     end_offset_beats: int,
     input_shift_beats: int,
-    end_truncate_ms: int,
+    end_truncate_ms: int | None,
     output_fade_ms: int,
 ) -> None:
     loop_segment = _get_loop_segment(
@@ -56,27 +56,28 @@ def loop_audio(
     if duration_s < _LOOP_SEGMENT_MIN_LENGTH_S:
         raise AudioLoopError(f"Loop segment is only {duration_s=}s long")
 
-    end_truncate_s = end_truncate_ms / 1000
-    if end_truncate_s >= duration_s:
-        raise AudioLoopError(
-            "End truncation length {end_truncate_s} exceeds loop segment length {duration_s=}"
-        )
+    if end_truncate_ms is not None:
+        end_truncate_s = end_truncate_ms / 1000
+        if end_truncate_s >= duration_s:
+            raise AudioLoopError(
+                "End truncation length {end_truncate_s} exceeds loop segment length {duration_s=}"
+            )
 
-    logger.debug(f"Looping {repetitions=} times")
-    looped_mp3 = np.tile(loop_segment, repetitions)
-    looped_mp3 = looped_mp3[: -_second_to_index(end_truncate_s, sampling_rate_hz)]
-    if output_fade_ms:
-        fade_samples = _second_to_index(output_fade_ms / 1000, sampling_rate_hz)
-        fade_curve = np.linspace(1, 0, fade_samples)
-        looped_mp3[-fade_samples:] *= fade_curve
+        logger.debug(f"Looping {repetitions=} times")
+        looped_mp3 = np.tile(loop_segment, repetitions)
+
+        looped_mp3 = looped_mp3[: -_second_to_index(end_truncate_s, sampling_rate_hz)]
+        if output_fade_ms:
+            fade_samples = _second_to_index(output_fade_ms / 1000, sampling_rate_hz)
+            fade_curve = np.linspace(1, 0, fade_samples)
+            looped_mp3[-fade_samples:] *= fade_curve
+    else:
+        looped_mp3 = loop_segment
 
     sf.write(TEMPORARY_WAV_FILENAME, looped_mp3, sampling_rate_hz)
     ffmpeg.input(TEMPORARY_WAV_FILENAME).output(LOOPED_MP3_FILENAME).run(quiet=True)
 
-    if repetitions != 1:
-        _remove_xing_header(LOOPED_MP3_FILENAME, output_filepath)
-    else:
-        shutil.copy(LOOPED_MP3_FILENAME, output_filepath)
+    _remove_xing_header(LOOPED_MP3_FILENAME, output_filepath)
     logger.debug(f"Looped {mp3_filepath}; wrote result to {output_filepath}")
 
 

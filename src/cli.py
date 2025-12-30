@@ -34,6 +34,11 @@ def main() -> None:
     mutually_exclusive_input_group.add_argument(
         "--input-filepath", "-i", type=str, help="Filepath to .mp3 file"
     )
+    input_group.add_argument(
+        "--browser", "-b",
+        type=str,
+        help="Browser to use when downloading from YouTube",
+    )
     # input splicing options
     input_splicing_group = parser.add_argument_group(
         "Input splicing", "Adjust the start/end of input .mp3 file"
@@ -91,7 +96,7 @@ def main() -> None:
         "--end-truncate",
         type=int,
         help="Length to truncate the end of the output file, in milliseconds",
-        default=0,
+        default=None,
     )
     output_group.add_argument(
         "--output-fade",
@@ -106,7 +111,7 @@ def main() -> None:
         raise argparse.ArgumentTypeError(
             f"Input shift {args.input_shift=} is an invalid negative value"
         )
-    if args.end_truncate < 0:
+    if args.end_truncate is not None and args.end_truncate < 0:
         raise argparse.ArgumentTypeError(
             f"End truncation length {args.end_truncate=} is an invalid negative value"
         )
@@ -125,7 +130,7 @@ def main() -> None:
             # download youtube .mp3 file
             logger.debug(f"Downloading {args.youtube}")
             with PushDir(temp_dir):
-                download_youtube(args.youtube, BASE_MP3_FILENAME)
+                download_youtube(args.youtube, BASE_MP3_FILENAME, args.browser.lower())
 
         # temp_dir now holds the BASE_MP3_FILENAME
         logger.debug(f"temp_dir contents: {os.listdir(temp_dir)}")

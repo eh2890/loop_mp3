@@ -6,7 +6,7 @@ from filename_constants import MP3_FILE_EXTENSION
 logger = logging.getLogger(__name__)
 
 
-def download_youtube(url: str, filename: str) -> None:
+def download_youtube(url: str, filename: str, browser: str) -> None:
     """
     Downloads YouTube URL as .mp3 file
     Returns path to downloaded file
@@ -16,10 +16,7 @@ def download_youtube(url: str, filename: str) -> None:
         filename = filename[: -len(MP3_FILE_EXTENSION)]
 
     yt_opts = {
-        "format": "bestaudio/best",
         "outtmpl": filename,
-        "audio_format": "mp3",
-        "logger": logger,
         "postprocessors": [
             {
                 "key": "FFmpegExtractAudio",
@@ -27,6 +24,8 @@ def download_youtube(url: str, filename: str) -> None:
                 "preferredquality": "192",
             }
         ],
+        "noplaylist": True,
+        "cookiesfrombrowser": (browser,),
     }
 
     with yt_dlp.YoutubeDL(yt_opts) as ydl:
